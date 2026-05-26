@@ -24,6 +24,20 @@ export default function Dashboard() {
     (c) => c.nextReviewDate <= new Date().toISOString().split("T")[0]
   );
 
+  function handleRename(id: string, newName: string) {
+    const deck = decks.find((d) => d.id === id);
+    if (deck) {
+      storage.saveDeck({ ...deck, name: newName });
+      setDecks(storage.getDecks());
+    }
+  }
+
+  function handleDelete(id: string) {
+    storage.deleteDeck(id);
+    setDecks(storage.getDecks());
+    setCards(storage.getCards());
+  }
+
   if (decks.length === 0) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
@@ -81,6 +95,8 @@ export default function Dashboard() {
               sourceFileName={deck.sourceFileName}
               totalCards={deckCards.length}
               dueCards={deckDue.length}
+              onRename={handleRename}
+              onDelete={handleDelete}
             />
           );
         })}
