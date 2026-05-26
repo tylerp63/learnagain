@@ -1,0 +1,280 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { v4 as uuid } from "uuid";
+import { type Deck, type Card } from "@/types";
+import * as storage from "@/lib/storage";
+
+export default function DeckDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const deckId = params.id as string;
+
+  const [deck, setDeck] = useState<Deck | null>(null);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newQuestion, setNewQuestion] = useState("");
+  const [newAnswer, setNewAnswer] = useState("");
+  const [editingCard, setEditingCard] = useState<string | null>(null);
+  const [editQ, setEditQ] = useState("");
+  const [editA, setEditA] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const d = storage.getDeck(deckId);
+    if (d) {
+      setDeck(d);
+      setNameValue(d.name);
+      setCards(storage.getCardsByDeck(deckId));
+    }
+    setMounted(true);
+  }, [deckId]);
+
+  if (!mounted) return null;
+
+  if (!deck) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8 text-center">
+        <p className="text-muted">Deck not found.</p>
+      </div>
+    );
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+  const dueCount = cards.filter((c) => c.nextReviewDate <= today).length;
+
+  function saveName() {
+    if (deck && nameValue.trim() && nameValue !== deck.name) {
+      const updated = { ...deck, name: nameValue.trim() };
+      storage.saveDeck(updated);
+      setDeck(updated);
+    }
+    setEditingName(false);
+  }
+
+  function handleAddCard(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newQuestion.trim() || !newAnswer.trim()) return;
+
+    const card: Card = {
+      id: uuid(),
+      deckId,
+      question: newQuestion.trim(),
+      answer: newAnswer.trim(),
+      easinessFactor: 2.5,
+      interval: 0,
+      repetitions: 0,
+      nextReviewDate: today,
+      createdAt: new Date().toISOString(),
+    };
+    storage.saveCard(card);
+    setCards((prev) => [...prev, card]);
+    setNewQuestion("");
+    setNewAnswer("");
+    setShowAddForm(false);
+  }
+
+  function handleDeleteCard(cardId: string) {
+    storage.deleteCard(cardId);
+    setCards((prev) => prev.filter((c) => c.id !== cardId));
+  }
+
+  function startEdit(card: Card) {
+    setEditingCard(card.id);
+    setEditQ(card.question);
+    setEditA(card.answer);
+  }
+
+  function saveEdit(cardId: string) {
+    if (editQ.trim() && editA.trim()) {
+      storage.updateCard(cardId, {
+        question: editQ.trim(),
+        answer: editA.trim(),
+      });
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === cardId
+            ? { ...c, question: editQ.trim(), answer: editA.trim() }
+            : c
+        )
+      );
+    }
+    setEditingCard(null);
+  }
+
+  function handleDeleteDeck() {
+    if (confirm("Delete this deck and all its cards?")) {
+      storage.deleteDeck(deckId);
+      router.push("/");
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          {editingName ? (
+            <input
+              value={nameValue}
+              onChange={(e) => setNameValue(e.target.value)}
+              onBlur={saveName}
+              onKeyDown={(e) => e.key === "Enter" && saveName()}
+              autoFocus
+              className="rounded border border-border bg-card px-2 py-1 text-2xl font-bold focus:border-primary focus:outline-none"
+            />
+          ) : (
+            <h1
+              onClick={() => setEditingName(true)}
+              className="cursor-pointer text-2xl font-bold hover:text-primary"
+            >
+              {deck.name}
+            </h1>
+          )}
+          <p className="mt-1 text-sm text-muted">
+            {deck.sourceFileName} &middot; {cards.length} card
+            {cards.length !== 1 ? "s" : ""}
+            {dueCount > 0 && (
+              <span className="ml-2 font-medium text-primary">
+                {dueCount} due
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+          >
+            Add Card
+          </button>
+          <button
+            onClick={handleDeleteDeck}
+            className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+          >
+            Delete Deck
+          </button>
+        </div>
+      </div>
+
+      {showAddForm && (
+        <form
+          onSubmit={handleAddCard}
+          className="mb-6 rounded-xl border border-border bg-card p-4"
+        >
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-medium text-muted">
+              Question
+            </label>
+            <textarea
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            />
+          </div>
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-medium text-muted">
+              Answer
+            </label>
+            <textarea
+              value={newAnswer}
+              onChange={(e) => setNewAnswer(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={!newQuestion.trim() || !newAnswer.trim()}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddForm(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-background"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {cards.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted">
+          No cards yet. Add one above.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {cards.map((card) => (
+            <div
+              key={card.id}
+              className="rounded-lg border border-border bg-card p-4"
+            >
+              {editingCard === card.id ? (
+                <div className="flex flex-col gap-2">
+                  <textarea
+                    value={editQ}
+                    onChange={(e) => setEditQ(e.target.value)}
+                    rows={2}
+                    className="rounded border border-border px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                  />
+                  <textarea
+                    value={editA}
+                    onChange={(e) => setEditA(e.target.value)}
+                    rows={2}
+                    className="rounded border border-border px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveEdit(card.id)}
+                      className="rounded bg-primary px-3 py-1 text-xs font-medium text-white"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingCard(null)}
+                      className="rounded border border-border px-3 py-1 text-xs"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{card.question}</p>
+                    <p className="mt-1 text-sm text-muted">{card.answer}</p>
+                    <p className="mt-2 text-xs text-muted">
+                      Next review: {card.nextReviewDate} &middot; EF:{" "}
+                      {card.easinessFactor} &middot; Interval: {card.interval}d
+                    </p>
+                  </div>
+                  <div className="ml-4 flex gap-2">
+                    <button
+                      onClick={() => startEdit(card)}
+                      className="text-xs text-muted hover:text-foreground"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCard(card.id)}
+                      className="text-xs text-muted hover:text-danger"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
