@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { v4 as uuid } from "uuid";
 import { type Card } from "@/types";
-import * as api from "@/lib/api";
+import * as storage from "@/lib/storage";
 
 interface CardCreatorFormProps {
   deckId: string;
@@ -23,7 +23,7 @@ export default function CardCreatorForm({
     if (prefillAnswer) setAnswer(prefillAnswer);
   }, [prefillAnswer]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!question.trim() || !answer.trim()) return;
 
@@ -40,7 +40,7 @@ export default function CardCreatorForm({
       createdAt: new Date().toISOString(),
     };
 
-    await api.saveCard(card);
+    storage.saveCard(card);
     onCardCreated(card);
     setQuestion("");
     setAnswer("");

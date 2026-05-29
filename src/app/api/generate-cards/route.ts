@@ -1,16 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUserId } from "@/lib/auth-guard";
 
 const client = new Anthropic();
 
 export async function POST(req: NextRequest) {
-  try {
-    await getAuthUserId();
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { text } = await req.json();
 
   if (!text || typeof text !== "string") {

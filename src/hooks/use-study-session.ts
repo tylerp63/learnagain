@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { type Card, type RecallQuality } from "@/types";
 import { sm2 } from "@/lib/sm2";
-import * as api from "@/lib/api";
+import * as storage from "@/lib/storage";
 
 interface SessionStats {
   total: number;
@@ -16,8 +16,10 @@ interface SessionStats {
 const MAX_RETRIES = 3;
 
 export function useStudySession() {
-  const [queue, setQueue] = useState<Card[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [queue, setQueue] = useState<Card[]>(() => {
+    const due = storage.getCardsDueToday();
+    return shuffle(due);
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [stats, setStats] = useState<SessionStats>({
     total: 0,
@@ -28,28 +30,21 @@ export function useStudySession() {
   });
   const [retryCount, setRetryCount] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    api.getCardsDueToday().then((due) => {
-      setQueue(shuffle(due));
-      setLoading(false);
-    });
-  }, []);
-
   const currentCard = useMemo(
     () => (currentIndex < queue.length ? queue[currentIndex] : null),
     [queue, currentIndex]
   );
 
-  const isComplete = !loading && currentIndex >= queue.length;
+  const isComplete = currentIndex >= queue.length;
   const remainingCount = Math.max(0, queue.length - currentIndex);
   const completedCount = currentIndex;
 
   const rateCard = useCallback(
-    async (quality: RecallQuality) => {
+    (quality: RecallQuality) => {
       if (!currentCard) return;
 
       const result = sm2(currentCard, quality);
-      await api.updateCard(currentCard.id, result);
+      storage.updateCard(currentCard.id, result);
 
       const statKey =
         quality === 0
@@ -72,7 +67,10 @@ export function useStudySession() {
             ...prev,
             [currentCard.id]: cardRetries + 1,
           }));
-          setQueue((prev) => [...prev, { ...currentCard, ...result }]);
+          setQueue((prev) => [
+            ...prev,
+            { ...currentCard, ...result },
+          ]);
         }
       }
 
@@ -89,7 +87,6 @@ export function useStudySession() {
     sessionStats: stats,
     rateCard,
     totalCards: queue.length,
-    loading,
   };
 }
 
