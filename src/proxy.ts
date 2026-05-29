@@ -10,9 +10,10 @@ export const config = {
      * Match all routes except:
      * - _next/static (static files)
      * - _next/image (image optimization)
+     * - api/* routes (except api/auth) — API routes handle auth themselves
      * - favicon.ico, sitemap.xml, robots.txt
      * - public assets (pdf worker, etc.)
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|sitemap\\.xml|robots\\.txt|pdf\\.worker\\.min\\.mjs).*)",
+    "/((?!_next/static|_next/image|api/(?!auth)|favicon\\.ico|sitemap\\.xml|robots\\.txt|pdf\\.worker\\.min\\.mjs).*)",
   ],
 };
