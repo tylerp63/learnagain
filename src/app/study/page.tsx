@@ -13,7 +13,18 @@ export default function StudyPage() {
     sessionStats,
     rateCard,
     totalCards,
+    loading,
   } = useStudySession();
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="flex items-center justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
 
   if (totalCards === 0) {
     return (
@@ -70,24 +81,16 @@ export default function StudyPage() {
 
           <div className="flex gap-6 text-sm">
             {sessionStats.again > 0 && (
-              <span className="text-danger">
-                Again: {sessionStats.again}
-              </span>
+              <span className="text-danger">Again: {sessionStats.again}</span>
             )}
             {sessionStats.hard > 0 && (
-              <span className="text-warning">
-                Hard: {sessionStats.hard}
-              </span>
+              <span className="text-warning">Hard: {sessionStats.hard}</span>
             )}
             {sessionStats.good > 0 && (
-              <span className="text-success">
-                Good: {sessionStats.good}
-              </span>
+              <span className="text-success">Good: {sessionStats.good}</span>
             )}
             {sessionStats.easy > 0 && (
-              <span className="text-primary">
-                Easy: {sessionStats.easy}
-              </span>
+              <span className="text-primary">Easy: {sessionStats.easy}</span>
             )}
           </div>
 

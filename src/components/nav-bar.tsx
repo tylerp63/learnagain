@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 
 const links = [
   { href: "/", label: "Dashboard" },
@@ -11,6 +12,7 @@ const links = [
 
 export default function NavBar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <nav className="border-b border-border bg-card">
@@ -38,6 +40,29 @@ export default function NavBar() {
               </Link>
             );
           })}
+        </div>
+
+        <div className="ml-auto flex items-center gap-3">
+          {session?.user && (
+            <>
+              {session.user.image && (
+                <img
+                  src={session.user.image}
+                  alt=""
+                  className="h-7 w-7 rounded-full"
+                />
+              )}
+              <span className="text-sm text-muted">
+                {session.user.name || session.user.email}
+              </span>
+              <button
+                onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+                className="rounded-md px-2.5 py-1 text-xs text-muted transition-colors hover:text-foreground"
+              >
+                Sign out
+              </button>
+            </>
+          )}
         </div>
       </div>
     </nav>

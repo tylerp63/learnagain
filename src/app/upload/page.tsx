@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 import { type Card, type Deck } from "@/types";
-import * as storage from "@/lib/storage";
+import * as api from "@/lib/api";
 import { useFileParser } from "@/hooks/use-file-parser";
 import DropZone from "@/components/drop-zone";
 import TextViewer from "@/components/text-viewer";
@@ -30,15 +30,15 @@ export default function UploadPage() {
     };
     setDeck(newDeck);
     setDeckName(name);
-    storage.saveDeck(newDeck);
+    await api.saveDeck(newDeck);
     await parseFile(file);
   }
 
-  function handleDeckNameBlur() {
+  async function handleDeckNameBlur() {
     if (deck && deckName.trim() && deckName !== deck.name) {
       const updated = { ...deck, name: deckName.trim() };
       setDeck(updated);
-      storage.saveDeck(updated);
+      await api.updateDeck(deck.id, { name: deckName.trim() });
     }
   }
 
@@ -47,8 +47,8 @@ export default function UploadPage() {
     setSelectedText("");
   }
 
-  function handleDeleteCard(cardId: string) {
-    storage.deleteCard(cardId);
+  async function handleDeleteCard(cardId: string) {
+    await api.deleteCard(cardId);
     setCreatedCards((prev) => prev.filter((c) => c.id !== cardId));
   }
 
@@ -87,7 +87,7 @@ export default function UploadPage() {
         })
       );
 
-      storage.saveCards(newCards);
+      await api.saveCards(newCards);
       setCreatedCards((prev) => [...prev, ...newCards]);
     } catch (err) {
       setGenError(
@@ -167,8 +167,7 @@ export default function UploadPage() {
                   AI Flashcard Generation
                 </h2>
                 <p className="mt-0.5 text-xs text-muted">
-                  Automatically generate study cards from the extracted
-                  text
+                  Automatically generate study cards from the extracted text
                 </p>
               </div>
               <button
@@ -191,9 +190,7 @@ export default function UploadPage() {
             <TextViewer text={text} onTextSelected={setSelectedText} />
 
             <div className="flex flex-col gap-4">
-              <h2 className="text-sm font-semibold">
-                Add Cards Manually
-              </h2>
+              <h2 className="text-sm font-semibold">Add Cards Manually</h2>
               <CardCreatorForm
                 deckId={deck.id}
                 onCardCreated={handleCardCreated}
@@ -223,9 +220,7 @@ export default function UploadPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium">{card.question}</p>
-                      <p className="mt-0.5 text-sm text-muted">
-                        {card.answer}
-                      </p>
+                      <p className="mt-0.5 text-sm text-muted">{card.answer}</p>
                     </div>
                     <button
                       onClick={() => handleDeleteCard(card.id)}

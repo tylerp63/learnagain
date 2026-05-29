@@ -2,40 +2,52 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { type Deck, type Card } from "@/types";
-import * as storage from "@/lib/storage";
+import * as api from "@/lib/api";
 import DeckCard from "@/components/deck-card";
 import EmptyState from "@/components/empty-state";
 
+interface DeckRow {
+  id: string;
+  name: string;
+  sourceFileName: string;
+  createdAt: string;
+  totalCards: number;
+  dueCards: number;
+}
+
 export default function Dashboard() {
-  const [decks, setDecks] = useState<Deck[]>([]);
-  const [cards, setCards] = useState<Card[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const [decks, setDecks] = useState<DeckRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setDecks(storage.getDecks());
-    setCards(storage.getCards());
-    setMounted(true);
+    api.getDecks().then((d) => {
+      setDecks(d);
+      setLoading(false);
+    });
   }, []);
 
-  if (!mounted) return null;
+  const totalDue = decks.reduce((sum, d) => sum + d.dueCards, 0);
 
-  const dueCards = cards.filter(
-    (c) => c.nextReviewDate <= new Date().toISOString().split("T")[0]
-  );
-
-  function handleRename(id: string, newName: string) {
-    const deck = decks.find((d) => d.id === id);
-    if (deck) {
-      storage.saveDeck({ ...deck, name: newName });
-      setDecks(storage.getDecks());
-    }
+  async function handleRename(id: string, newName: string) {
+    await api.updateDeck(id, { name: newName });
+    setDecks((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, name: newName } : d))
+    );
   }
 
-  function handleDelete(id: string) {
-    storage.deleteDeck(id);
-    setDecks(storage.getDecks());
-    setCards(storage.getCards());
+  async function handleDelete(id: string) {
+    await api.deleteDeck(id);
+    setDecks((prev) => prev.filter((d) => d.id !== id));
+  }
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="flex items-center justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
   }
 
   if (decks.length === 0) {
@@ -57,18 +69,18 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="mt-1 text-sm text-muted">
-            {dueCards.length > 0
-              ? `${dueCards.length} card${dueCards.length === 1 ? "" : "s"} due for review`
+            {totalDue > 0
+              ? `${totalDue} card${totalDue === 1 ? "" : "s"} due for review`
               : "All caught up!"}
           </p>
         </div>
         <div className="flex gap-3">
-          {dueCards.length > 0 && (
+          {totalDue > 0 && (
             <Link
               href="/study"
               className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
             >
-              Start Study ({dueCards.length})
+              Start Study ({totalDue})
             </Link>
           )}
           <Link
@@ -81,25 +93,18 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {decks.map((deck) => {
-          const deckCards = cards.filter((c) => c.deckId === deck.id);
-          const deckDue = deckCards.filter(
-            (c) =>
-              c.nextReviewDate <= new Date().toISOString().split("T")[0]
-          );
-          return (
-            <DeckCard
-              key={deck.id}
-              id={deck.id}
-              name={deck.name}
-              sourceFileName={deck.sourceFileName}
-              totalCards={deckCards.length}
-              dueCards={deckDue.length}
-              onRename={handleRename}
-              onDelete={handleDelete}
-            />
-          );
-        })}
+        {decks.map((deck) => (
+          <DeckCard
+            key={deck.id}
+            id={deck.id}
+            name={deck.name}
+            sourceFileName={deck.sourceFileName}
+            totalCards={deck.totalCards}
+            dueCards={deck.dueCards}
+            onRename={handleRename}
+            onDelete={handleDelete}
+          />
+        ))}
       </div>
     </div>
   );
