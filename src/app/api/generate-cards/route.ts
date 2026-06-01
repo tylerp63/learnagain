@@ -1,9 +1,15 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth/require-user";
 
 const client = new Anthropic();
 
 export async function POST(req: NextRequest) {
+  const { user } = await requireUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { text } = await req.json();
 
   if (!text || typeof text !== "string") {

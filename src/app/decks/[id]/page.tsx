@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 import { type Deck, type Card } from "@/types";
-import * as storage from "@/lib/storage";
+import * as api from "@/lib/api";
 
 export default function DeckDetailPage() {
   const params = useParams();
@@ -13,6 +13,7 @@ export default function DeckDetailPage() {
 
   const [deck, setDeck] = useState<Deck | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -21,19 +22,35 @@ export default function DeckDetailPage() {
   const [editingCard, setEditingCard] = useState<string | null>(null);
   const [editQ, setEditQ] = useState("");
   const [editA, setEditA] = useState("");
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const d = storage.getDeck(deckId);
-    if (d) {
-      setDeck(d);
-      setNameValue(d.name);
-      setCards(storage.getCardsByDeck(deckId));
+    async function load() {
+      try {
+        const [d, c] = await Promise.all([
+          api.getDeck(deckId),
+          api.getCardsByDeck(deckId),
+        ]);
+        setDeck(d);
+        setNameValue(d.name);
+        setCards(c);
+      } catch {
+        // deck not found
+      } finally {
+        setLoading(false);
+      }
     }
-    setMounted(true);
+    load();
   }, [deckId]);
 
-  if (!mounted) return null;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="flex items-center justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
 
   if (!deck) {
     return (
@@ -46,39 +63,32 @@ export default function DeckDetailPage() {
   const today = new Date().toISOString().split("T")[0];
   const dueCount = cards.filter((c) => c.nextReviewDate <= today).length;
 
-  function saveName() {
+  async function saveName() {
     if (deck && nameValue.trim() && nameValue !== deck.name) {
-      const updated = { ...deck, name: nameValue.trim() };
-      storage.saveDeck(updated);
+      const updated = await api.renameDeck(deck.id, nameValue.trim());
       setDeck(updated);
     }
     setEditingName(false);
   }
 
-  function handleAddCard(e: React.FormEvent) {
+  async function handleAddCard(e: React.FormEvent) {
     e.preventDefault();
     if (!newQuestion.trim() || !newAnswer.trim()) return;
 
-    const card: Card = {
+    const [saved] = await api.saveCard(deckId, {
       id: uuid(),
-      deckId,
       question: newQuestion.trim(),
       answer: newAnswer.trim(),
-      easinessFactor: 2.5,
-      interval: 0,
-      repetitions: 0,
       nextReviewDate: today,
-      createdAt: new Date().toISOString(),
-    };
-    storage.saveCard(card);
-    setCards((prev) => [...prev, card]);
+    });
+    setCards((prev) => [...prev, saved]);
     setNewQuestion("");
     setNewAnswer("");
     setShowAddForm(false);
   }
 
-  function handleDeleteCard(cardId: string) {
-    storage.deleteCard(cardId);
+  async function handleDeleteCard(cardId: string) {
+    await api.deleteCard(cardId);
     setCards((prev) => prev.filter((c) => c.id !== cardId));
   }
 
@@ -88,26 +98,22 @@ export default function DeckDetailPage() {
     setEditA(card.answer);
   }
 
-  function saveEdit(cardId: string) {
+  async function saveEdit(cardId: string) {
     if (editQ.trim() && editA.trim()) {
-      storage.updateCard(cardId, {
+      const updated = await api.updateCard(cardId, {
         question: editQ.trim(),
         answer: editA.trim(),
       });
       setCards((prev) =>
-        prev.map((c) =>
-          c.id === cardId
-            ? { ...c, question: editQ.trim(), answer: editA.trim() }
-            : c
-        )
+        prev.map((c) => (c.id === cardId ? updated : c))
       );
     }
     setEditingCard(null);
   }
 
-  function handleDeleteDeck() {
+  async function handleDeleteDeck() {
     if (confirm("Delete this deck and all its cards?")) {
-      storage.deleteDeck(deckId);
+      await api.deleteDeck(deckId);
       router.push("/");
     }
   }
