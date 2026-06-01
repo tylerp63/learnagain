@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 import { type Card, type Deck } from "@/types";
-import * as storage from "@/lib/storage";
+import * as api from "@/lib/api";
 import { useFileParser } from "@/hooks/use-file-parser";
 import DropZone from "@/components/drop-zone";
 import TextViewer from "@/components/text-viewer";
@@ -30,15 +30,19 @@ export default function UploadPage() {
     };
     setDeck(newDeck);
     setDeckName(name);
-    storage.saveDeck(newDeck);
+    await api.createDeck({
+      id: newDeck.id,
+      name: newDeck.name,
+      sourceFileName: newDeck.sourceFileName,
+    });
     await parseFile(file);
   }
 
-  function handleDeckNameBlur() {
+  async function handleDeckNameBlur() {
     if (deck && deckName.trim() && deckName !== deck.name) {
       const updated = { ...deck, name: deckName.trim() };
       setDeck(updated);
-      storage.saveDeck(updated);
+      await api.renameDeck(deck.id, deckName.trim());
     }
   }
 
@@ -47,8 +51,8 @@ export default function UploadPage() {
     setSelectedText("");
   }
 
-  function handleDeleteCard(cardId: string) {
-    storage.deleteCard(cardId);
+  async function handleDeleteCard(cardId: string) {
+    await api.deleteCard(cardId);
     setCreatedCards((prev) => prev.filter((c) => c.id !== cardId));
   }
 
@@ -73,7 +77,7 @@ export default function UploadPage() {
       const today = new Date().toISOString().split("T")[0];
       const now = new Date().toISOString();
 
-      const newCards: Card[] = generated.map(
+      const newCards = generated.map(
         (g: { question: string; answer: string }) => ({
           id: uuid(),
           deckId: deck.id,
@@ -87,8 +91,8 @@ export default function UploadPage() {
         })
       );
 
-      storage.saveCards(newCards);
-      setCreatedCards((prev) => [...prev, ...newCards]);
+      const saved = await api.saveCards(deck.id, newCards);
+      setCreatedCards((prev) => [...prev, ...saved]);
     } catch (err) {
       setGenError(
         err instanceof Error ? err.message : "Failed to generate cards"

@@ -13,7 +13,18 @@ export default function StudyPage() {
     sessionStats,
     rateCard,
     totalCards,
+    loading,
   } = useStudySession();
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="flex items-center justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
 
   if (totalCards === 0) {
     return (

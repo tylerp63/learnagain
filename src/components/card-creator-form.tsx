@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { v4 as uuid } from "uuid";
 import { type Card } from "@/types";
-import * as storage from "@/lib/storage";
+import * as api from "@/lib/api";
 
 interface CardCreatorFormProps {
   deckId: string;
@@ -18,32 +18,32 @@ export default function CardCreatorForm({
 }: CardCreatorFormProps) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (prefillAnswer) setAnswer(prefillAnswer);
   }, [prefillAnswer]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!question.trim() || !answer.trim()) return;
+    if (!question.trim() || !answer.trim() || saving) return;
 
+    setSaving(true);
     const today = new Date().toISOString().split("T")[0];
-    const card: Card = {
-      id: uuid(),
-      deckId,
-      question: question.trim(),
-      answer: answer.trim(),
-      easinessFactor: 2.5,
-      interval: 0,
-      repetitions: 0,
-      nextReviewDate: today,
-      createdAt: new Date().toISOString(),
-    };
 
-    storage.saveCard(card);
-    onCardCreated(card);
-    setQuestion("");
-    setAnswer("");
+    try {
+      const [saved] = await api.saveCard(deckId, {
+        id: uuid(),
+        question: question.trim(),
+        answer: answer.trim(),
+        nextReviewDate: today,
+      });
+      onCardCreated(saved);
+      setQuestion("");
+      setAnswer("");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -74,10 +74,10 @@ export default function CardCreatorForm({
       </div>
       <button
         type="submit"
-        disabled={!question.trim() || !answer.trim()}
+        disabled={!question.trim() || !answer.trim() || saving}
         className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
-        Add Card
+        {saving ? "Adding..." : "Add Card"}
       </button>
     </form>
   );

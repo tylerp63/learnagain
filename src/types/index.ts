@@ -27,3 +27,12 @@ export const RECALL_BUTTON_MAP = {
 } as const;
 
 export type RecallButton = keyof typeof RECALL_BUTTON_MAP;
+
+export interface DeckWithCounts {
+  id: string;
+  name: string;
+  sourceFileName: string;
+  createdAt: string;
+  totalCards: number;
+  dueCards: number;
+}
