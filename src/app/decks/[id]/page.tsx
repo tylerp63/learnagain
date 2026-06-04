@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
-import { type Deck, type Card } from "@/types";
+import { type Deck, type Card, type Tag } from "@/types";
 import * as api from "@/lib/api";
+import TagInput from "@/components/tag-input";
 
 export default function DeckDetailPage() {
   const params = useParams();
@@ -22,17 +23,25 @@ export default function DeckDetailPage() {
   const [editingCard, setEditingCard] = useState<string | null>(null);
   const [editQ, setEditQ] = useState("");
   const [editA, setEditA] = useState("");
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [deckTags, setDeckTags] = useState<Tag[]>([]);
 
   useEffect(() => {
     async function load() {
       try {
-        const [d, c] = await Promise.all([
+        const [d, c, decksWithTags, userTags] = await Promise.all([
           api.getDeck(deckId),
           api.getCardsByDeck(deckId),
+          api.getDecks(),
+          api.getTags(),
         ]);
         setDeck(d);
         setNameValue(d.name);
         setCards(c);
+        setAllTags(userTags);
+        // Find this deck's tags from the decks list
+        const thisDeck = decksWithTags.find((dk) => dk.id === deckId);
+        if (thisDeck) setDeckTags(thisDeck.tags);
       } catch {
         // deck not found
       } finally {
@@ -69,6 +78,18 @@ export default function DeckDetailPage() {
       setDeck(updated);
     }
     setEditingName(false);
+  }
+
+  async function handleAddTag(tag: Tag) {
+    const next = [...deckTags, tag];
+    setDeckTags(next);
+    await api.setDeckTags(deckId, next.map((t) => t.id));
+  }
+
+  async function handleRemoveTag(tagId: string) {
+    const next = deckTags.filter((t) => t.id !== tagId);
+    setDeckTags(next);
+    await api.setDeckTags(deckId, next.map((t) => t.id));
   }
 
   async function handleAddCard(e: React.FormEvent) {
@@ -120,48 +141,69 @@ export default function DeckDetailPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          {editingName ? (
-            <input
-              value={nameValue}
-              onChange={(e) => setNameValue(e.target.value)}
-              onBlur={saveName}
-              onKeyDown={(e) => e.key === "Enter" && saveName()}
-              autoFocus
-              className="rounded border border-border bg-card px-2 py-1 text-2xl font-bold focus:border-primary focus:outline-none"
-            />
-          ) : (
-            <h1
-              onClick={() => setEditingName(true)}
-              className="cursor-pointer text-2xl font-bold hover:text-primary"
-            >
-              {deck.name}
-            </h1>
-          )}
-          <p className="mt-1 text-sm text-muted">
-            {deck.sourceFileName} &middot; {cards.length} card
-            {cards.length !== 1 ? "s" : ""}
-            {dueCount > 0 && (
-              <span className="ml-2 font-medium text-primary">
-                {dueCount} due
-              </span>
+      <div className="mb-6 flex flex-col gap-4">
+        <div className="flex items-start justify-between">
+          <div>
+            {editingName ? (
+              <input
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                onBlur={saveName}
+                onKeyDown={(e) => e.key === "Enter" && saveName()}
+                autoFocus
+                className="rounded border border-border bg-card px-2 py-1 text-2xl font-bold focus:border-primary focus:outline-none"
+              />
+            ) : (
+              <h1
+                onClick={() => setEditingName(true)}
+                className="cursor-pointer text-2xl font-bold hover:text-primary"
+              >
+                {deck.name}
+              </h1>
+            )}
+            <p className="mt-1 text-sm text-muted">
+              {deck.sourceFileName} &middot; {cards.length} card
+              {cards.length !== 1 ? "s" : ""}
+              {dueCount > 0 && (
+                <span className="ml-2 font-medium text-primary">
+                  {dueCount} due
+                </span>
             )}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
-          >
-            Add Card
-          </button>
-          <button
-            onClick={handleDeleteDeck}
-            className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
-          >
-            Delete Deck
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+            >
+              Add Card
+            </button>
+            <button
+              onClick={handleDeleteDeck}
+              className="rounded-lg border border-danger/30 px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+            >
+              Delete Deck
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-md">
+          <label className="mb-1 block text-xs font-medium text-muted">
+            Subject Tags
+          </label>
+          <TagInput
+            selectedTags={deckTags}
+            allTags={allTags}
+            onAdd={handleAddTag}
+            onCreate={async (name) => {
+              const tag = await api.createTag(name);
+              setAllTags((prev) =>
+                [...prev, tag].sort((a, b) => a.name.localeCompare(b.name))
+              );
+              return tag;
+            }}
+            onRemove={handleRemoveTag}
+          />
         </div>
       </div>
 

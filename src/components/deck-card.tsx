@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { type Tag } from "@/types";
 
 interface DeckCardProps {
   id: string;
@@ -9,6 +10,7 @@ interface DeckCardProps {
   sourceFileName: string;
   totalCards: number;
   dueCards: number;
+  tags: Tag[];
   onRename: (id: string, newName: string) => void;
   onDelete: (id: string) => void;
 }
@@ -19,6 +21,7 @@ export default function DeckCard({
   sourceFileName,
   totalCards,
   dueCards,
+  tags,
   onRename,
   onDelete,
 }: DeckCardProps) {
@@ -58,6 +61,18 @@ export default function DeckCard({
         </Link>
       )}
       <p className="truncate text-xs text-muted">{sourceFileName}</p>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((tag) => (
+            <span
+              key={tag.id}
+              className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"
+            >
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="flex gap-4 text-sm">
         <span className="text-muted">{totalCards} cards</span>
         {dueCards > 0 && (
