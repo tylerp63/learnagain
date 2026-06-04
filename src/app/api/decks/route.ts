@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db";
-import { decks, cards } from "@/db/schema";
-import { eq, sql, and, lte, count } from "drizzle-orm";
+import { decks, cards, tags, deckTags } from "@/db/schema";
+import { eq, sql, and, lte, count, inArray } from "drizzle-orm";
 import { requireUser } from "@/lib/auth/require-user";
 
-// GET /api/decks — list all decks with card counts
+// GET /api/decks — list all decks with card counts and tags
 export async function GET() {
   const { user } = await requireUser();
   if (!user) {
@@ -28,7 +28,38 @@ export async function GET() {
     .groupBy(decks.id)
     .orderBy(decks.createdAt);
 
-  return Response.json(rows);
+  // Fetch tags for all decks in one query
+  const deckIds = rows.map((r) => r.id);
+  let tagsByDeck: Record<string, { id: string; name: string; createdAt: string }[]> = {};
+
+  if (deckIds.length > 0) {
+    const tagRows = await db
+      .select({
+        deckId: deckTags.deckId,
+        tagId: tags.id,
+        tagName: tags.name,
+        tagCreatedAt: tags.createdAt,
+      })
+      .from(deckTags)
+      .innerJoin(tags, eq(tags.id, deckTags.tagId))
+      .where(inArray(deckTags.deckId, deckIds));
+
+    for (const row of tagRows) {
+      if (!tagsByDeck[row.deckId]) tagsByDeck[row.deckId] = [];
+      tagsByDeck[row.deckId].push({
+        id: row.tagId,
+        name: row.tagName,
+        createdAt: row.tagCreatedAt as string,
+      });
+    }
+  }
+
+  const result = rows.map((row) => ({
+    ...row,
+    tags: tagsByDeck[row.id] || [],
+  }));
+
+  return Response.json(result);
 }
 
 // POST /api/decks — create a new deck

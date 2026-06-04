@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
-import { type Card, type Deck } from "@/types";
+import { type Card, type Deck, type Tag } from "@/types";
 import * as api from "@/lib/api";
 import { useFileParser } from "@/hooks/use-file-parser";
 import DropZone from "@/components/drop-zone";
 import TextViewer from "@/components/text-viewer";
 import CardCreatorForm from "@/components/card-creator-form";
+import TagInput from "@/components/tag-input";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -19,6 +20,12 @@ export default function UploadPage() {
   const [selectedText, setSelectedText] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+
+  useEffect(() => {
+    api.getTags().then(setAllTags);
+  }, []);
 
   async function handleFileSelected(file: File) {
     const name = file.name.replace(/\.[^.]+$/, "");
@@ -102,8 +109,11 @@ export default function UploadPage() {
     }
   }
 
-  function handleFinish() {
+  async function handleFinish() {
     if (deck) {
+      if (selectedTags.length > 0) {
+        await api.setDeckTags(deck.id, selectedTags.map((t) => t.id));
+      }
       router.push(`/decks/${deck.id}`);
     }
   }
@@ -148,20 +158,42 @@ export default function UploadPage() {
 
       {text && deck && (
         <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-4">
-            <input
-              value={deckName}
-              onChange={(e) => setDeckName(e.target.value)}
-              onBlur={handleDeckNameBlur}
-              className="rounded-lg border border-border bg-card px-3 py-1.5 text-lg font-semibold focus:border-primary focus:outline-none"
-            />
-            <span className="text-sm text-muted">{deck.sourceFileName}</span>
-            <button
-              onClick={handleReset}
-              className="ml-auto text-sm text-muted hover:text-foreground"
-            >
-              Upload different file
-            </button>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-4">
+              <input
+                value={deckName}
+                onChange={(e) => setDeckName(e.target.value)}
+                onBlur={handleDeckNameBlur}
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-lg font-semibold focus:border-primary focus:outline-none"
+              />
+              <span className="text-sm text-muted">{deck.sourceFileName}</span>
+              <button
+                onClick={handleReset}
+                className="ml-auto text-sm text-muted hover:text-foreground"
+              >
+                Upload different file
+              </button>
+            </div>
+            <div className="max-w-md">
+              <label className="mb-1 block text-xs font-medium text-muted">
+                Subject Tags
+              </label>
+              <TagInput
+                selectedTags={selectedTags}
+                allTags={allTags}
+                onAdd={(tag) => setSelectedTags((prev) => [...prev, tag])}
+                onCreate={async (name) => {
+                  const tag = await api.createTag(name);
+                  setAllTags((prev) =>
+                    [...prev, tag].sort((a, b) => a.name.localeCompare(b.name))
+                  );
+                  return tag;
+                }}
+                onRemove={(id) =>
+                  setSelectedTags((prev) => prev.filter((t) => t.id !== id))
+                }
+              />
+            </div>
           </div>
 
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">

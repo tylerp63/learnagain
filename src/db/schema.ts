@@ -6,6 +6,8 @@ import {
   real,
   integer,
   index,
+  uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 export const decks = pgTable(
@@ -38,5 +40,36 @@ export const cards = pgTable(
   (table) => [
     index("cards_deckId_idx").on(table.deckId),
     index("cards_nextReviewDate_idx").on(table.nextReviewDate),
+  ]
+);
+
+export const tags = pgTable(
+  "tags",
+  {
+    id: uuid("id").primaryKey(),
+    userId: text("userId").notNull(),
+    name: text("name").notNull(),
+    createdAt: timestamp("createdAt", { mode: "string" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("tags_userId_idx").on(table.userId),
+    uniqueIndex("tags_userId_name_idx").on(table.userId, table.name),
+  ]
+);
+
+export const deckTags = pgTable(
+  "deck_tags",
+  {
+    deckId: uuid("deckId")
+      .notNull()
+      .references(() => decks.id, { onDelete: "cascade" }),
+    tagId: uuid("tagId")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.deckId, table.tagId] }),
+    index("deckTags_deckId_idx").on(table.deckId),
+    index("deckTags_tagId_idx").on(table.tagId),
   ]
 );

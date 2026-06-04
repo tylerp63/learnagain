@@ -1,4 +1,4 @@
-import { type Deck, type Card, type DeckWithCounts } from "@/types";
+import { type Deck, type Card, type DeckWithCounts, type Tag } from "@/types";
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -97,4 +97,29 @@ export async function updateCard(
 
 export async function deleteCard(id: string): Promise<void> {
   await fetchJSON(`/api/cards/${id}`, { method: "DELETE" });
+}
+
+// ---- Tags ----
+
+export async function getTags(): Promise<Tag[]> {
+  return fetchJSON("/api/tags");
+}
+
+export async function createTag(name: string): Promise<Tag> {
+  return fetchJSON("/api/tags", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function setDeckTags(
+  deckId: string,
+  tagIds: string[]
+): Promise<void> {
+  await fetchJSON(`/api/decks/${deckId}/tags`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tagIds }),
+  });
 }
