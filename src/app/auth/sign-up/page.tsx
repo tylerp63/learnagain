@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { signUpWithEmail } from "./actions";
 import OAuthButtons from "@/components/oauth-buttons";
 
@@ -8,9 +9,9 @@ export default function SignUpForm() {
   const [state, formAction, isPending] = useActionState(signUpWithEmail, null);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900">
+    <div className="flex min-h-[80vh] flex-col items-center justify-center">
       <div className="w-sm">
-        <h1 className="mb-6 text-center text-2xl/9 font-bold text-white">
+        <h1 className="mb-6 text-center text-2xl/9 font-bold text-foreground">
           Create new account
         </h1>
       </div>
@@ -18,9 +19,9 @@ export default function SignUpForm() {
       <OAuthButtons />
 
       <div className="my-6 flex w-sm items-center gap-3">
-        <div className="h-px flex-1 bg-white/10" />
-        <span className="text-sm text-gray-400">or</span>
-        <div className="h-px flex-1 bg-white/10" />
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-sm text-muted">or</span>
+        <div className="h-px flex-1 bg-border" />
       </div>
 
       <form
@@ -30,7 +31,7 @@ export default function SignUpForm() {
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="name"
-            className="block text-sm font-medium text-gray-100"
+            className="block text-sm font-medium text-foreground"
           >
             Name
           </label>
@@ -40,14 +41,14 @@ export default function SignUpForm() {
             type="text"
             required
             placeholder="John Doe"
-            className="block rounded-md w-full bg-white/5 px-2 py-1.5 placeholder:text-gray-500 text-white outline-1 outline-white/10 focus:outline-indigo-500"
+            className="block w-full rounded-md border border-border bg-card px-2 py-1.5 text-foreground placeholder:text-muted focus:border-primary focus:outline-none"
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-gray-100"
+            className="block text-sm font-medium text-foreground"
           >
             Email address
           </label>
@@ -57,14 +58,14 @@ export default function SignUpForm() {
             type="email"
             required
             placeholder="john@my-company.com"
-            className="block rounded-md w-full bg-white/5 px-2 py-1.5 placeholder:text-gray-500 text-white outline-1 outline-white/10 focus:outline-indigo-500"
+            className="block w-full rounded-md border border-border bg-card px-2 py-1.5 text-foreground placeholder:text-muted focus:border-primary focus:outline-none"
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-gray-100"
+            className="block text-sm font-medium text-foreground"
           >
             Password
           </label>
@@ -74,12 +75,12 @@ export default function SignUpForm() {
             type="password"
             required
             placeholder="*****"
-            className="block rounded-md w-full bg-white/5 px-2 py-1.5 placeholder:text-gray-500 text-white outline-1 outline-white/10 focus:outline-indigo-500"
+            className="block w-full rounded-md border border-border bg-card px-2 py-1.5 text-foreground placeholder:text-muted focus:border-primary focus:outline-none"
           />
         </div>
 
         {state?.error && (
-          <div className="rounded-md px-3 py-2 text-sm text-red-500">
+          <div className="rounded-md px-3 py-2 text-sm text-danger">
             {state.error}
           </div>
         )}
@@ -87,11 +88,18 @@ export default function SignUpForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-indigo-400"
+          className="flex w-full justify-center rounded-md bg-primary px-3 py-1.5 text-sm/6 font-semibold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
           {isPending ? "Creating account..." : "Create Account"}
         </button>
       </form>
+
+      <p className="mt-6 text-center text-sm text-muted">
+        Already have an account?{" "}
+        <Link href="/auth/sign-in" className="font-medium text-primary hover:text-primary-hover">
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 }
