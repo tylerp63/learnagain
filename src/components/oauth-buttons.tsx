@@ -7,7 +7,7 @@ export default function OAuthButtons() {
     <div className="flex w-sm flex-col gap-3">
       <button
         type="button"
-        onClick={() => authClient.signIn.social({ provider: "google" })}
+        onClick={() => authClient.signIn.social({ provider: "google", callbackURL: "/" })}
         className="flex w-full items-center justify-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-background"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -33,7 +33,7 @@ export default function OAuthButtons() {
 
       <button
         type="button"
-        onClick={() => authClient.signIn.social({ provider: "github" })}
+        onClick={() => authClient.signIn.social({ provider: "github", callbackURL: "/" })}
         className="flex w-full items-center justify-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-background"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
