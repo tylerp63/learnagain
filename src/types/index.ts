@@ -10,6 +10,7 @@ export interface Card {
   deckId: string;
   question: string;
   answer: string;
+  illustration?: string | null;
   easinessFactor: number;
   interval: number;
   repetitions: number;

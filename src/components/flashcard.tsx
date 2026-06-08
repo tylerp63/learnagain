@@ -48,6 +48,12 @@ export default function Flashcard({ card, onRate }: FlashcardProps) {
               <p className="text-sm">{card.question}</p>
             </div>
             <hr className="border-border" />
+            {card.illustration && (
+              <div
+                className="flex justify-center [&>svg]:max-w-full [&>svg]:h-auto"
+                dangerouslySetInnerHTML={{ __html: card.illustration }}
+              />
+            )}
             <div>
               <p className="mb-1 text-xs font-medium text-muted">Answer</p>
               <p className="text-lg">{card.answer}</p>

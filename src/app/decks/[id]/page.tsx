@@ -25,6 +25,9 @@ export default function DeckDetailPage() {
   const [editA, setEditA] = useState("");
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [deckTags, setDeckTags] = useState<Tag[]>([]);
+  const [generatingIllustration, setGeneratingIllustration] = useState<Set<string>>(new Set());
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
   useEffect(() => {
     async function load() {
@@ -139,6 +142,39 @@ export default function DeckDetailPage() {
     }
   }
 
+  async function handleGenerateIllustration(cardId: string) {
+    setGeneratingIllustration((prev) => new Set(prev).add(cardId));
+    try {
+      const updated = await api.generateIllustration(cardId);
+      setCards((prev) => prev.map((c) => (c.id === cardId ? updated : c)));
+    } catch (err) {
+      console.error("Failed to generate illustration:", err);
+    } finally {
+      setGeneratingIllustration((prev) => {
+        const next = new Set(prev);
+        next.delete(cardId);
+        return next;
+      });
+    }
+  }
+
+  async function handleBulkGenerateIllustrations() {
+    const missing = cards.filter((c) => !c.illustration);
+    if (missing.length === 0) return;
+    setBulkGenerating(true);
+    setBulkProgress({ done: 0, total: missing.length });
+    for (const card of missing) {
+      try {
+        const updated = await api.generateIllustration(card.id);
+        setCards((prev) => prev.map((c) => (c.id === card.id ? updated : c)));
+      } catch (err) {
+        console.error(`Failed to generate illustration for ${card.id}:`, err);
+      }
+      setBulkProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+    }
+    setBulkGenerating(false);
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex flex-col gap-4">
@@ -177,6 +213,15 @@ export default function DeckDetailPage() {
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
             >
               Add Card
+            </button>
+            <button
+              onClick={handleBulkGenerateIllustrations}
+              disabled={bulkGenerating || cards.every((c) => c.illustration)}
+              className="rounded-lg border border-primary/30 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+            >
+              {bulkGenerating
+                ? `Generating… ${bulkProgress.done}/${bulkProgress.total}`
+                : `Generate Illustrations${cards.filter((c) => !c.illustration).length > 0 ? ` (${cards.filter((c) => !c.illustration).length})` : ""}`}
             </button>
             <button
               onClick={handleDeleteDeck}
@@ -298,12 +343,30 @@ export default function DeckDetailPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{card.question}</p>
                     <p className="mt-1 text-sm text-muted">{card.answer}</p>
+                    {card.illustration && (
+                      <div
+                        className="mt-2 inline-block rounded-lg border border-border bg-background p-2 [&>svg]:max-w-full [&>svg]:h-auto"
+                        dangerouslySetInnerHTML={{ __html: card.illustration }}
+                      />
+                    )}
                     <p className="mt-2 text-xs text-muted">
                       Next review: {card.nextReviewDate} &middot; EF:{" "}
                       {card.easinessFactor} &middot; Interval: {card.interval}d
                     </p>
                   </div>
-                  <div className="ml-4 flex gap-2">
+                  <div className="ml-4 flex shrink-0 gap-2">
+                    <button
+                      onClick={() => handleGenerateIllustration(card.id)}
+                      disabled={generatingIllustration.has(card.id)}
+                      className="text-xs text-muted hover:text-primary disabled:opacity-50"
+                      title={card.illustration ? "Regenerate illustration" : "Generate illustration"}
+                    >
+                      {generatingIllustration.has(card.id)
+                        ? "Generating…"
+                        : card.illustration
+                          ? "Regen 🖼️"
+                          : "🖼️ Add"}
+                    </button>
                     <button
                       onClick={() => startEdit(card)}
                       className="text-xs text-muted hover:text-foreground"

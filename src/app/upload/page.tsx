@@ -22,6 +22,8 @@ export default function UploadPage() {
   const [genError, setGenError] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  const [generateIllustrations, setGenerateIllustrations] = useState(false);
+  const [illustrationProgress, setIllustrationProgress] = useState({ done: 0, total: 0, active: false });
 
   useEffect(() => {
     api.getTags().then(setAllTags);
@@ -100,6 +102,23 @@ export default function UploadPage() {
 
       const saved = await api.saveCards(deck.id, newCards);
       setCreatedCards((prev) => [...prev, ...saved]);
+
+      // Optionally generate illustrations sequentially
+      if (generateIllustrations && saved.length > 0) {
+        setIllustrationProgress({ done: 0, total: saved.length, active: true });
+        for (const card of saved) {
+          try {
+            const updated = await api.generateIllustration(card.id);
+            setCreatedCards((prev) =>
+              prev.map((c) => (c.id === card.id ? updated : c))
+            );
+          } catch (err) {
+            console.error(`Illustration failed for ${card.id}:`, err);
+          }
+          setIllustrationProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+        }
+        setIllustrationProgress((prev) => ({ ...prev, active: false }));
+      }
     } catch (err) {
       setGenError(
         err instanceof Error ? err.message : "Failed to generate cards"
@@ -206,16 +225,29 @@ export default function UploadPage() {
                   Automatically generate study cards from the extracted
                   text
                 </p>
+                <label className="mt-2 flex items-center gap-2 text-xs text-muted">
+                  <input
+                    type="checkbox"
+                    checked={generateIllustrations}
+                    onChange={(e) => setGenerateIllustrations(e.target.checked)}
+                    className="rounded border-border accent-primary"
+                  />
+                  Also generate illustrations for each card
+                </label>
               </div>
               <button
                 onClick={handleGenerate}
-                disabled={generating}
+                disabled={generating || illustrationProgress.active}
                 className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
               >
-                {generating && (
+                {(generating || illustrationProgress.active) && (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 )}
-                {generating ? "Generating..." : "Generate Cards"}
+                {illustrationProgress.active
+                  ? `Illustrations… ${illustrationProgress.done}/${illustrationProgress.total}`
+                  : generating
+                    ? "Generating cards…"
+                    : "Generate Cards"}
               </button>
             </div>
             {genError && (
@@ -262,6 +294,12 @@ export default function UploadPage() {
                       <p className="mt-0.5 text-sm text-muted">
                         {card.answer}
                       </p>
+                      {card.illustration && (
+                        <div
+                          className="mt-2 inline-block rounded border border-border bg-background p-1 [&>svg]:max-w-full [&>svg]:h-auto [&>svg]:max-h-32"
+                          dangerouslySetInnerHTML={{ __html: card.illustration }}
+                        />
+                      )}
                     </div>
                     <button
                       onClick={() => handleDeleteCard(card.id)}

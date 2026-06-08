@@ -40,6 +40,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   const allowed: Partial<{
     question: string;
     answer: string;
+    illustration: string | null;
     easinessFactor: number;
     interval: number;
     repetitions: number;
@@ -48,6 +49,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
 
   if (body.question !== undefined) allowed.question = body.question;
   if (body.answer !== undefined) allowed.answer = body.answer;
+  if (body.illustration !== undefined) allowed.illustration = body.illustration;
   if (body.easinessFactor !== undefined) allowed.easinessFactor = body.easinessFactor;
   if (body.interval !== undefined) allowed.interval = body.interval;
   if (body.repetitions !== undefined) allowed.repetitions = body.repetitions;

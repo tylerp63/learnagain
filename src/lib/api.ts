@@ -99,6 +99,10 @@ export async function deleteCard(id: string): Promise<void> {
   await fetchJSON(`/api/cards/${id}`, { method: "DELETE" });
 }
 
+export async function generateIllustration(cardId: string): Promise<Card> {
+  return fetchJSON(`/api/cards/${cardId}/illustration`, { method: "POST" });
+}
+
 // ---- Tags ----
 
 export async function getTags(): Promise<Tag[]> {
