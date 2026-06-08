@@ -7,7 +7,7 @@ import { authClient } from "@/lib/auth/client";
 const links = [
   { href: "/", label: "Dashboard" },
   { href: "/upload", label: "Upload" },
-  { href: "/study", label: "Study" },
+  { href: "/study", label: "Study" }
 ];
 
 export default function NavBar() {
@@ -49,7 +49,7 @@ export default function NavBar() {
               {session.user.name || session.user.email}
             </span>
             <button
-              onClick={() => authClient.signOut()}
+              onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/auth"; } } })}
               className="rounded-md px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
             >
               Sign out
