@@ -1,9 +1,29 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { authClient } from "@/lib/auth/client";
 import OAuthButtons from "@/components/oauth-buttons";
 
 export default function AuthPage() {
+  const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
+
+  useEffect(() => {
+    if (session?.user) {
+      router.replace("/");
+    }
+  }, [session, router]);
+
+  if (isPending || session?.user) {
+    return (
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center">
       <div className="w-sm">
